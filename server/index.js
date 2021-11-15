@@ -6,7 +6,9 @@ const { createPool } = require('mysql');
 
 const app= express();
 const saltRounds = 10;
-
+const jwt= require('jsonwebtoken');
+const SECRET = process.env.SECRET;
+const { verifyJWT } = require('./auth/token_validation');
 
 
 app.use(express.json());
@@ -71,23 +73,27 @@ app.post('/login', (req,res)=> {
              })
          }
            if(result.length>0) {
-               console.log("result",result)
+             //  console.log("result",result)
                bcrypt.compare(password, result[0].password, (err, response)=>{
-                   if(response)
-                return res.status(200).send({result} );
-                else
-                return res.send({message: "wrong password"});
+                   if(response){
+                     const id= result[0].id;
+
+                    const token= jwt.sign( {id}, SECRET, { expiresIn: 300 })
+
+                    return res.status(200).send({auth: true, token: token,result: result} );}
+
+                else return res.send({auth: false, message: "wrong password"});
                })
             }
             else{
-                return res.send({message: "User doesn't exist"});
+                return res.status(200).send({auth: false,message: "User doesn't exist" } );
             }
-      
-       
-   }
-     )
+        })
+    })
 
-})
+    app.get('/isUserAuth', verifyJWT, (req,res)=>{
+        res.send("You are Authenticated");;
+    })
 
 const port = process.env.APP_PORT;
 app.listen(port, ()=>{
